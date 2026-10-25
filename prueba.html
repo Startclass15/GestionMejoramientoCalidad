@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Telemetría</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --primary: #38bdf8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        header {
+            width: 100%;
+            max-width: 1200px;
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        /* Tarjetas (Cards) */
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            animation: fadeInUp 0.8s ease-out backwards;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
+        }
+
+        /* Retraso en animaciones para efecto cascada */
+        .card:nth-child(1) { animation-delay: 0.1s; }
+        .card:nth-child(2) { animation-delay: 0.3s; }
+        .card:nth-child(3) { animation-delay: 0.5s; }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .card-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: baseline;
+            gap: 0.5rem;
+        }
+
+        .unit {
+            font-size: 1rem;
+            color: var(--text-muted);
+            font-weight: normal;
+        }
+
+        /* --- Animaciones Específicas --- */
+
+        /* 1. Barra de progreso animada (Sensor Ultrasónico) */
+        .progress-bar-container {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 1rem;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: var(--primary);
+            width: 0%;
+            transition: width 0.5s ease-in-out;
+        }
+
+        /* 2. Indicador de pulso (Relé / Bomba) */
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: var(--success);
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            animation: pulse 1.5s infinite;
+        }
+
+        /* 3. Gráfico circular simulado (Robot Busca-Sol) */
+        .circular-chart {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 1rem;
+        }
+
+        .circle-wrap {
+            width: 80px;
+            height: 80px;
+            background: conic-gradient(var(--warning) 0%, rgba(255,255,255,0.1) 0%);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background 0.3s;
+        }
+
+        .circle-inner {
+            width: 60px;
+            height: 60px;
+            background: var(--card-bg);
+            border-radius: 50%;
+        }
+
+        /* Keyframes */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div>
+            <h1>Panel de Control</h1>
+            <p style="color: var(--text-muted); margin-top: 0.5rem;">Monitorización del Sistema en Tiempo Real</p>
+        </div>
+        <div style="text-align: right;">
+            <p id="clock" style="font-size: 1.2rem; font-weight: bold;"></p>
+            <span style="display: inline-block; padding: 0.25rem 0.75rem; background: rgba(16, 185, 129, 0.2); color: var(--success); border-radius: 1rem; font-size: 0.8rem; margin-top: 0.5rem;">Sistema en línea</span>
+        </div>
+    </header>
+
+    <div class="dashboard-grid">
+        <!-- Tarjeta 1: Sensor Ultrasónico -->
+        <div class="card">
+            <div class="card-header">
+                <span>Nivel del Tanque (Ultrasónico)</span>
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+            </div>
+            <div class="card-value">
+                <span id="ultrasonic-val">45</span>
+                <span class="unit">cm (Distancia)</span>
+            </div>
+            <p style="color: var(--text-muted); font-size: 0.85rem;">Capacidad actual: <span id="capacity-val">65</span>%</p>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="tank-bar" style="width: 65%;"></div>
+            </div>
+        </div>
+
+        <!-- Tarjeta 2: Relé de Bomba de Agua -->
+        <div class="card">
+            <div class="card-header">
+                <span>Estado de Bomba (Relé)</span>
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            </div>
+            <div class="card-value">
+                <span id="pump-status">ACTIVO</span>
+            </div>
+            <div class="status-indicator">
+                <div class="dot" id="pump-dot"></div>
+                <span id="pump-text" style="color: var(--success); font-weight: 500;">Operando con normalidad</span>
+            </div>
+            <div style="margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted);">
+                Flujo estimado: <span id="flow-val" style="color: var(--text-main);">12.5</span> L/min
+            </div>
+        </div>
+
+        <!-- Tarjeta 3: Intensidad Lumínica (Robot Fototrópico) -->
+        <div class="card">
+            <div class="card-header">
+                <span>Intensidad Lumínica</span>
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+            </div>
+            <div class="card-value">
+                <span id="light-val">850</span>
+                <span class="unit">Lux</span>
+            </div>
+            <div class="circular-chart">
+                <div class="circle-wrap" id="light-circle">
+                    <div class="circle-inner"></div>
+                </div>
+            </div>
+            <p style="text-align: center; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">Seguimiento solar activo</p>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. Reloj en tiempo real ---
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').textContent = now.toLocaleTimeString('es-ES');
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // --- 2. Simulación de datos dinámicos ---
+        
+        // Variables de estado
+        let distance = 45;
+        let isPumpActive = true;
+        let lightIntensity = 850;
+
+        function simulateData() {
+            // Simular lectura de sensor ultrasónico (flotación de nivel)
+            const variation = (Math.random() - 0.5) * 4;
+            distance = Math.max(10, Math.min(100, distance + variation));
+            
+            // Calcular capacidad % inversa a la distancia (10cm = 100%, 100cm = 0%)
+            let capacity = Math.max(0, Math.min(100, ((100 - distance) / 90) * 100));
+
+            // Actualizar DOM Ultrasónico
+            document.getElementById('ultrasonic-val').textContent = distance.toFixed(1);
+            document.getElementById('capacity-val').textContent = Math.round(capacity);
+            document.getElementById('tank-bar').style.width = `${capacity}%`;
+            
+            // Cambiar color de barra según nivel
+            const tankBar = document.getElementById('tank-bar');
+            if(capacity < 20) tankBar.style.background = 'var(--danger)';
+            else if (capacity < 50) tankBar.style.background = 'var(--warning)';
+            else tankBar.style.background = 'var(--primary)';
+
+            // Simular Estado de Bomba (Lógica: Si baja del 20%, activar bomba; si sube del 90%, apagar)
+            if (capacity < 20 && !isPumpActive) togglePump(true);
+            if (capacity > 90 && isPumpActive) togglePump(false);
+
+            if (isPumpActive) {
+                // Simular variación de flujo de agua
+                const flow = 12 + (Math.random() * 2 - 1);
+                document.getElementById('flow-val').textContent = flow.toFixed(1);
+            }
+
+            // Simular sensor de luz (robot busca-sol)
+            const lightVariation = (Math.random() - 0.5) * 50;
+            lightIntensity = Math.max(0, Math.min(1500, lightIntensity + lightVariation));
+            document.getElementById('light-val').textContent = Math.round(lightIntensity);
+
+            // Actualizar gráfico circular de luz (porcentaje sobre 1500 lux máximo)
+            const lightPercent = (lightIntensity / 1500) * 100;
+            const circleWrap = document.getElementById('light-circle');
+            circleWrap.style.background = `conic-gradient(var(--warning) ${lightPercent}%, rgba(255,255,255,0.1) 0%)`;
+        }
+
+        function togglePump(status) {
+            isPumpActive = status;
+            const statusText = document.getElementById('pump-status');
+            const dot = document.getElementById('pump-dot');
+            const msg = document.getElementById('pump-text');
+            const flow = document.getElementById('flow-val');
+
+            if (status) {
+                statusText.textContent = 'ACTIVO';
+                dot.style.backgroundColor = 'var(--success)';
+                dot.style.animation = 'pulse 1.5s infinite';
+                msg.textContent = 'Operando con normalidad';
+                msg.style.color = 'var(--success)';
+            } else {
+                statusText.textContent = 'INACTIVO';
+                dot.style.backgroundColor = 'var(--danger)';
+                dot.style.animation = 'none'; // Detener animación de pulso
+                msg.textContent = 'Bomba en reposo';
+                msg.style.color = 'var(--danger)';
+                flow.textContent = '0.0';
+            }
+        }
+
+        // Ejecutar simulación cada 1.5 segundos
+        setInterval(simulateData, 1500);
+    </script>
+</body>
+</html>

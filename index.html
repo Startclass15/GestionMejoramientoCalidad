@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard Simulado</title>
+<style>
+  :root{
+    --bg:#0b1020; --panel:#141b33; --panel2:#1a2342; --text:#e8ecf8; --muted:#8a95b8;
+    --line:#26305a; --c1:#5b8cff; --c2:#22d3a6; --c3:#ffb547; --c4:#ff6b8b; --c5:#a78bfa;
+    --good:#22d3a6; --bad:#ff6b8b;
+  }
+  body.light{
+    --bg:#f1f4fb; --panel:#ffffff; --panel2:#eef2fb; --text:#1b2340; --muted:#6b7599; --line:#dde3f3;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);
+       min-height:100vh;padding:24px;transition:background .4s,color .4s}
+  header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:22px}
+  h1{font-size:1.5rem;font-weight:700}
+  h1 small{display:block;font-size:.8rem;color:var(--muted);font-weight:400;margin-top:2px}
+  .controls{display:flex;gap:10px;align-items:center}
+  .live{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--muted)}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--good);animation:pulse 1.6s infinite}
+  .paused .dot{background:var(--muted);animation:none}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,211,166,.6)}70%{box-shadow:0 0 0 10px rgba(34,211,166,0)}100%{box-shadow:0 0 0 0 rgba(34,211,166,0)}}
+  button{background:var(--panel);color:var(--text);border:1px solid var(--line);padding:8px 14px;border-radius:10px;
+         cursor:pointer;font-size:.85rem;transition:transform .15s,background .2s}
+  button:hover{transform:translateY(-2px);background:var(--panel2)}
+  .grid{display:grid;gap:18px}
+  .kpis{grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin-bottom:18px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;
+        opacity:0;transform:translateY(24px);animation:in .7s forwards;transition:background .4s,border-color .4s}
+  .card:hover{border-color:var(--c1)}
+  @keyframes in{to{opacity:1;transform:none}}
+  .kpi .label{font-size:.8rem;color:var(--muted);display:flex;justify-content:space-between}
+  .kpi .value{font-size:2rem;font-weight:700;margin:6px 0 2px;font-variant-numeric:tabular-nums}
+  .kpi .delta{font-size:.8rem;font-weight:600}
+  .up{color:var(--good)} .down{color:var(--bad)}
+  .kpi canvas{width:100%;height:46px;margin-top:8px;display:block}
+  .row{grid-template-columns:2fr 1fr;margin-bottom:18px}
+  .row3{grid-template-columns:1fr 1fr 1fr}
+  @media(max-width:900px){.row,.row3{grid-template-columns:1fr}}
+  .card h3{font-size:.95rem;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+  .card h3 span{font-size:.75rem;color:var(--muted);font-weight:400}
+  canvas.chart{width:100%;height:260px;display:block}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:.78rem;color:var(--muted)}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px}
+  .bar{margin-bottom:14px}
+  .bar .top{display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:6px}
+  .track{height:9px;background:var(--panel2);border-radius:99px;overflow:hidden}
+  .fill{height:100%;width:0;border-radius:99px;transition:width 1s cubic-bezier(.3,.8,.3,1),background .5s}
+  .feed{list-style:none;max-height:260px;overflow:hidden}
+  .feed li{display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:.83rem;
+           animation:slide .5s both}
+  .feed li:last-child{border:none}
+  .feed .ico{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-size:.95rem;flex:none}
+  .feed .t{color:var(--muted);font-size:.72rem;margin-left:auto;white-space:nowrap}
+  @keyframes slide{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>📊 Panel de Control<small>Simulación en tiempo real</small></h1>
+  </div>
+  <div class="controls" id="controls">
+    <div class="live"><span class="dot"></span><span id="status">En vivo</span> · <span id="clock">--:--:--</span></div>
+    <button id="btnPause">⏸ Pausar</button>
+    <button id="btnTheme">🌓 Tema</button>
+  </div>
+</header>
+
+<section class="grid kpis" id="kpis"></section>
+
+<section class="grid row">
+  <div class="card" style="animation-delay:.4s">
+    <h3>Tráfico en tiempo real <span>últimos 40 segundos</span></h3>
+    <canvas class="chart" id="lineChart"></canvas>
+    <div class="legend"><span><i style="background:var(--c1)"></i>Visitas</span><span><i style="background:var(--c2)"></i>Conversiones</span></div>
+  </div>
+  <div class="card" style="animation-delay:.5s">
+    <h3>Fuentes de tráfico <span>distribución</span></h3>
+    <canvas class="chart" id="donut"></canvas>
+    <div class="legend" id="donutLegend"></div>
+  </div>
+</section>
+
+<section class="grid row3">
+  <div class="card" style="animation-delay:.6s">
+    <h3>Ventas por día <span>semana actual</span></h3>
+    <canvas class="chart" id="barChart" style="height:220px"></canvas>
+  </div>
+  <div class="card" style="animation-delay:.7s">
+    <h3>Recursos del sistema <span>uso actual</span></h3>
+    <div id="bars" style="margin-top:6px"></div>
+  </div>
+  <div class="card" style="animation-delay:.8s">
+    <h3>Actividad reciente <span>eventos</span></h3>
+    <ul class="feed" id="feed"></ul>
+  </div>
+</section>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const rnd = (a,b) => Math.random()*(b-a)+a;
+  const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
+  const css = n => getComputedStyle(document.body).getPropertyValue(n).trim();
+  let paused = false;
+  const TICK = 1000;
+
+  /* ---------- Canvas helper (nítido en pantallas retina) ---------- */
+  function setup(c){
+    const r = c.getBoundingClientRect(), d = window.devicePixelRatio||1;
+    c.width = r.width*d; c.height = r.height*d;
+    const g = c.getContext('2d'); g.setTransform(d,0,0,d,0,0);
+    return {g,w:r.width,h:r.height};
+  }
+
+  /* ---------- KPIs ---------- */
+  const kpiDefs = [
+    {id:'users', label:'Usuarios activos', icon:'👥', val:1280, fmt:v=>Math.round(v).toLocaleString('es'), step:40,  min:600,  max:3000, col:'--c1'},
+    {id:'rev',   label:'Ingresos (Bs)',   icon:'💰', val:48250, fmt:v=>'Bs '+Math.round(v).toLocaleString('es'), step:900, min:20000, max:90000, col:'--c2'},
+    {id:'ord',   label:'Pedidos',          icon:'🛒', val:342,  fmt:v=>Math.round(v).toLocaleString('es'), step:12,  min:100,  max:900,  col:'--c3'},
+    {id:'lat',   label:'Latencia (ms)',    icon:'⚡', val:86,   fmt:v=>Math.round(v)+' ms', step:8,   min:30,   max:220,  col:'--c5', invert:true}
+  ];
+  const kpiBox = $('#kpis');
+  kpiDefs.forEach((k,i)=>{
+    k.hist = Array.from({length:24},()=>k.val+rnd(-k.step,k.step));
+    k.shown = 0; k.prev = k.val;
+    const el = document.createElement('div');
+    el.className = 'card kpi'; el.style.animationDelay = (i*.1)+'s';
+    el.innerHTML = `<div class="label"><span>${k.label}</span><span>${k.icon}</span></div>
+      <div class="value" id="v-${k.id}">0</div>
+      <div class="delta" id="d-${k.id}">—</div>
+      <canvas id="s-${k.id}"></canvas>`;
+    kpiBox.appendChild(el);
+  });
+
+  /* ---------- Gráfico de líneas ---------- */
+  const N = 40;
+  const A = Array.from({length:N},(_,i)=>50+Math.sin(i/4)*15+rnd(-5,5));
+  const B = A.map(v=>v*.45+rnd(-3,3));
+  let lastTick = performance.now();
+
+  function smoothPath(g,pts){
+    g.moveTo(pts[0][0],pts[0][1]);
+    for(let i=1;i<pts.length-1;i++){
+      const mx=(pts[i][0]+pts[i+1][0])/2, my=(pts[i][1]+pts[i+1][1])/2;
+      g.quadraticCurveTo(pts[i][0],pts[i][1],mx,my);
+    }
+    const l=pts[pts.length-1]; g.lineTo(l[0],l[1]);
+  }
+  function drawLine(now){
+    const {g,w,h} = setup($('#lineChart'));
+    const pad = {l:36,r:10,t:10,b:20};
+    const iw = w-pad.l-pad.r, ih = h-pad.t-pad.b;
+    const p = paused ? 1 : clamp((now-lastTick)/TICK,0,1);
+    const step = iw/(N-2);
+    g.clearRect(0,0,w,h);
+    g.strokeStyle = css('--line'); g.fillStyle = css('--muted'); g.font='11px system-ui'; g.lineWidth=1;
+    for(let i=0;i<=4;i++){
+      const y = pad.t+ih*i/4;
+      g.beginPath(); g.moveTo(pad.l,y); g.lineTo(w-pad.r,y); g.stroke();
+      g.fillText(Math.round(100-25*i), 4, y+4);
+    }
+    g.save(); g.beginPath(); g.rect(pad.l,0,iw,h); g.clip();
+    [[A,'--c1'],[B,'--c2']].forEach(([arr,col])=>{
+      const pts = arr.map((v,i)=>[pad.l+i*step-p*step, pad.t+ih*(1-v/100)]);
+      const color = css(col);
+      g.beginPath(); smoothPath(g,pts);
+      g.lineWidth=2.5; g.strokeStyle=color; g.stroke();
+      g.lineTo(pts[pts.length-1][0],pad.t+ih); g.lineTo(pts[0][0],pad.t+ih); g.closePath();
+      const gr = g.createLinearGradient(0,pad.t,0,pad.t+ih);
+      gr.addColorStop(0,color+'55'); gr.addColorStop(1,color+'00');
+      g.fillStyle=gr; g.fill();
+      const e = pts[pts.length-1];
+      g.beginPath(); g.arc(e[0],e[1],4,0,7); g.fillStyle=color; g.fill();
+    });
+    g.restore();
+  }
+
+  /* ---------- Gráfico de barras ---------- */
+  const days = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  const bars = days.map(()=>({v:0,t:rnd(30,95)}));
+  function drawBars(){
+    const {g,w,h} = setup($('#barChart'));
+    const pad = {l:8,r:8,t:14,b:22};
+    const iw = w-pad.l-pad.r, ih = h-pad.t-pad.b, bw = iw/bars.length;
+    g.clearRect(0,0,w,h); g.font='11px system-ui'; g.textAlign='center';
+    const cols=['--c1','--c2','--c3','--c4','--c5','--c1','--c2'];
+    bars.forEach((b,i)=>{
+      b.v += (b.t-b.v)*.08;
+      const bh = ih*b.v/100, x = pad.l+i*bw+bw*.18, y = pad.t+ih-bh, ww = bw*.64;
+      const gr = g.createLinearGradient(0,y,0,y+bh);
+      gr.addColorStop(0,css(cols[i])); gr.addColorStop(1,css(cols[i])+'66');
+      g.fillStyle=gr; g.beginPath(); g.roundRect(x,y,ww,bh,6); g.fill();
+      g.fillStyle=css('--muted'); g.fillText(days[i],x+ww/2,h-6);
+      g.fillStyle=css('--text'); g.fillText(Math.round(b.v),x+ww/2,y-5);
+    });
+  }
+
+  /* ---------- Donut ---------- */
+  const srcs = [
+    {n:'Orgánico',c:'--c1',v:0,t:42},{n:'Directo',c:'--c2',v:0,t:26},
+    {n:'Redes',c:'--c3',v:0,t:20},{n:'Email',c:'--c4',v:0,t:12}
+  ];
+  $('#donutLegend').innerHTML = srcs.map(s=>`<span><i style="background:var(${s.c})"></i>${s.n}</span>`).join('');
+  let donutSpin = 0;
+  function drawDonut(){
+    const {g,w,h} = setup($('#donut'));
+    g.clearRect(0,0,w,h);
+    const cx=w/2, cy=h/2, R=Math.min(w,h)/2-14, r=R*.62;
+    srcs.forEach(s=>s.v += (s.t-s.v)*.06);
+    const tot = srcs.reduce((a,s)=>a+s.v,0);
+    donutSpin = Math.min(1, donutSpin+.02);
+    let a0 = -Math.PI/2;
+    srcs.forEach(s=>{
+      const a1 = a0 + (s.v/tot)*Math.PI*2*donutSpin;
+      g.beginPath(); g.arc(cx,cy,R,a0,a1); g.arc(cx,cy,r,a1,a0,true); g.closePath();
+      g.fillStyle = css(s.c); g.fill(); a0 = a1;
+    });
+    g.fillStyle=css('--text'); g.textAlign='center'; g.font='bold 24px system-ui';
+    g.fillText(Math.round(srcs[0].v/tot*100)+'%',cx,cy+4);
+    g.font='11px system-ui'; g.fillStyle=css('--muted'); g.fillText('Orgánico',cx,cy+22);
+  }
+
+  /* ---------- Barras de recursos ---------- */
+  const res = [
+    {n:'CPU',v:35},{n:'Memoria',v:58},{n:'Disco',v:72},{n:'Red',v:24}
+  ];
+  const resBox = $('#bars');
+  res.forEach(r=>{
+    const d = document.createElement('div'); d.className='bar';
+    d.innerHTML = `<div class="top"><span>${r.n}</span><b></b></div><div class="track"><div class="fill"></div></div>`;
+    resBox.appendChild(d); r.el=d;
+  });
+  function updateRes(){
+    res.forEach(r=>{
+      r.v = clamp(r.v+rnd(-9,9),5,98);
+      const f = r.el.querySelector('.fill');
+      f.style.width = r.v+'%';
+      f.style.background = r.v>85?css('--c4'):r.v>65?css('--c3'):css('--c2');
+      r.el.querySelector('b').textContent = Math.round(r.v)+'%';
+    });
+  }
+
+  /* ---------- Feed de eventos ---------- */
+  const events = [
+    ['🛒','Nuevo pedido #','--c2'],['👤','Registro de usuario #','--c1'],['💳','Pago confirmado #','--c3'],
+    ['⚠️','Alerta de servidor #','--c4'],['⭐','Nueva reseña #','--c5'],['📦','Envío despachado #','--c1']
+  ];
+  const names = ['Ana','Luis','Carla','Diego','Marta','Pablo','Lucía','Jorge'];
+  function addEvent(){
+    const e = events[Math.floor(Math.random()*events.length)];
+    const li = document.createElement('li');
+    li.innerHTML = `<div class="ico" style="background:var(${e[2]})22">${e[0]}</div>
+      <div>${e[1]}${Math.floor(rnd(1000,9999))}<br><span style="color:var(--muted);font-size:.74rem">${names[Math.floor(Math.random()*names.length)]}</span></div>
+      <span class="t">${new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</span>`;
+    const feed = $('#feed'); feed.prepend(li);
+    while(feed.children.length>6) feed.lastChild.remove();
+  }
+
+  /* ---------- Contadores animados + sparklines ---------- */
+  function animateKPIs(){
+    kpiDefs.forEach(k=>{
+      k.shown += (k.val-k.shown)*.1;
+      $('#v-'+k.id).textContent = k.fmt(k.shown);
+      const c = $('#s-'+k.id), {g,w,h} = setup(c);
+      const mn = Math.min(...k.hist), mx = Math.max(...k.hist);
+      const pts = k.hist.map((v,i)=>[i*w/(k.hist.length-1), h-4-(h-8)*(v-mn)/((mx-mn)||1)]);
+      g.beginPath(); smoothPath(g,pts); g.strokeStyle=css(k.col); g.lineWidth=2; g.stroke();
+      g.lineTo(w,h); g.lineTo(0,h); g.closePath();
+      const gr=g.createLinearGradient(0,0,0,h); gr.addColorStop(0,css(k.col)+'44'); gr.addColorStop(1,css(k.col)+'00');
+      g.fillStyle=gr; g.fill();
+    });
+  }
+
+  /* ---------- Tick de simulación ---------- */
+  function tick(){
+    if(paused) return;
+    kpiDefs.forEach(k=>{
+      k.prev = k.val;
+      k.val = clamp(k.val+rnd(-k.step,k.step),k.min,k.max);
+      k.hist.push(k.val); k.hist.shift();
+      const pct = (k.val-k.prev)/k.prev*100;
+      const good = k.invert ? pct<0 : pct>0;
+      const d = $('#d-'+k.id);
+      d.textContent = (pct>=0?'▲ ':'▼ ')+Math.abs(pct).toFixed(1)+'%';
+      d.className = 'delta '+(good?'up':'down');
+    });
+    const last = A[A.length-1];
+    A.push(clamp(last+rnd(-12,12),10,95)); A.shift();
+    B.push(clamp(A[A.length-1]*.45+rnd(-6,6),4,60)); B.shift();
+    lastTick = performance.now();
+    updateRes();
+    if(Math.random()<.35) bars[Math.floor(Math.random()*7)].t = rnd(25,98);
+    if(Math.random()<.4){ srcs.forEach(s=>s.t = clamp(s.t+rnd(-4,4),5,60)); }
+    if(Math.random()<.8) addEvent();
+  }
+
+  /* ---------- Bucle de render ---------- */
+  function frame(now){
+    animateKPIs(); drawLine(now); drawBars(); drawDonut();
+    requestAnimationFrame(frame);
+  }
+
+  /* ---------- Controles ---------- */
+  $('#btnPause').onclick = e=>{
+    paused = !paused;
+    e.target.textContent = paused ? '▶ Reanudar' : '⏸ Pausar';
+    $('#status').textContent = paused ? 'Pausado' : 'En vivo';
+    $('#controls').classList.toggle('paused',paused);
+    if(!paused) lastTick = performance.now();
+  };
+  $('#btnTheme').onclick = ()=>document.body.classList.toggle('light');
+  setInterval(()=>{ $('#clock').textContent = new Date().toLocaleTimeString('es'); },1000);
+
+  /* ---------- Inicio ---------- */
+  for(let i=0;i<5;i++) addEvent();
+  updateRes(); tick();
+  setInterval(tick,TICK);
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
